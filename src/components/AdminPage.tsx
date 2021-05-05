@@ -4,15 +4,18 @@ import { useLazyQuery, gql, useMutation } from "@apollo/client"
 
 
 interface IInput {
-    email: string
+    email?: string
+    id?: string
 }
 interface IGetFriend {
     getFriendByEmail?: IEditFriend
+    getFriendById?: IEditFriend
 }
 interface IEditFriend {
     firstName: string
     lastName: string
     email: string
+    password: string
     role: string
 
 }
@@ -24,23 +27,33 @@ const DELETE_FRIEND = gql`
 mutation getFriendByEmail($email: String!) {deleteFriend(email: $email)
 }`
 
+const GET_FRIEND_BY_ID = gql`
+ query getFriendById($id: String!) 
+ {getFriendById(id: $id)
+ {firstName lastName email role password}
+}`
 
-const GET_FRIEND = gql`
+const GET_FRIEND_BY_EMAIL = gql`
  query getFriendByEmail($email: String!) 
  {getFriendByEmail(email: $email)
- {firstName lastName email role}
-}`
-const EDIT_FRIEND = gql`
-mutation adminEditFriend($input:AdminFriendEditInput ) 
-{adminEditFriend(input: $input)
-{firstName lastName}
+ {firstName lastName email role password}
 }`
 
-export default function FindFriend() {
-    const [email, setEmail] = useState("")
+const EDIT_FRIEND = gql`
+mutation adminEditFriend($input:FriendEditInput ) 
+{adminEditFriend(input: $input)
+{firstName lastName email role password}
+}`
+
+export default function AdminPage() {
+    const [emailorId, setemailOrId] = useState("")
     const [getFriendByEmail, { loading, called, data, error }] = useLazyQuery<IGetFriend, IInput>(
-        GET_FRIEND,
-        { fetchPolicy: "cache-and-network" }
+        GET_FRIEND_BY_EMAIL,
+        { fetchPolicy: "no-cache" }
+    );
+    const [getFriendById, { loading: loadingId, called: calledId, data: dataId, error: errorId }] = useLazyQuery<IGetFriend, IInput>(
+        GET_FRIEND_BY_ID,
+        { fetchPolicy: "no-cache" }
     );
     const [editFriend] = useMutation<any>(
         EDIT_FRIEND
@@ -49,7 +62,7 @@ export default function FindFriend() {
         DELETE_FRIEND
     );
 
-    const [friendToEdit, setFriendToEdit] = useState<any>({ firstName: "", lastName: "", email: "", role: "" })
+    const [friendToEdit, setFriendToEdit] = useState<any>({ firstName: "", lastName: "", email: "", role: "", password: "" })
 
     const handleChange = (event: any) => {
         const id = event.currentTarget.id;
@@ -60,6 +73,9 @@ export default function FindFriend() {
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (friendToEdit.password === null) {
+            delete friendToEdit.password
+        }
         delete friendToEdit.role
         delete friendToEdit.__typename
         editFriend({ variables: { input: friendToEdit } })
@@ -72,23 +88,35 @@ export default function FindFriend() {
     }
 
     useEffect(() => {
-        setFriendToEdit({ ...data?.getFriendByEmail });
+        if (data?.getFriendByEmail) {
+            setFriendToEdit({ ...data?.getFriendByEmail })
+        } else {
+            setFriendToEdit({ ...dataId?.getFriendById })
+        };
 
-    }, [data]);
+    }, [data, dataId]);
 
+    const fetchFriendByEmailOrId = (event: any) => {
+        event.preventDefault()
+        if (emailorId.includes("@")) {
+            getFriendByEmail({ variables: { email: emailorId } })
 
+        } else {
+            getFriendById({ variables: { id: emailorId } })
+        }
+    }
 
 
     return (<div style={style}>
-        Email: <input type="txt" value={email} onChange={e => {
-            setEmail(e.target.value)
+        Email or ID: <input type="txt" value={emailorId} onChange={e => {
+            setemailOrId(e.target.value)
         }}></input>
-    &nbsp;<button onClick={() => getFriendByEmail({ variables: { email: email } })}>Find Friend</button>
+    &nbsp;<button onClick={fetchFriendByEmailOrId}>Find Friend</button>
         <br />
         <br />
-        {error && <p>{JSON.stringify(error.graphQLErrors[0].message)}</p>}
-        {called && loading && <p>Loading...</p>}
-        {data && (
+        {(error || errorId) && <p>{error?.message}</p>}
+        {(called || loading) && (calledId || loadingId) && <p>Loading...</p>}
+        {(data || dataId) && (
             <div>
                 <form onSubmit={handleSubmit} >
                     <label>
@@ -104,6 +132,10 @@ export default function FindFriend() {
                     <label>
                         Email <br />
                         <input disabled={true} type="email" id="email" value={friendToEdit.email} />
+                    </label>
+                    <label>
+                        Password <br />
+                        <input type="password" id="password" value={friendToEdit.password} onChange={handleChange} />
                     </label>
                     <br />
                     <input type="radio" value="user" id="role" checked={friendToEdit.role === "user"} /> User

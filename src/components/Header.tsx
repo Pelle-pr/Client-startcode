@@ -39,7 +39,7 @@ export default function Header({ isLoggedIn, setLoginStatus }: addHeaderProps) {
                         </li>)}
                     {role.includes("admin") && (
                         <li>
-                            <NavLink exact activeClassName="selected" to="/findFriend">Find Friend</NavLink>
+                            <NavLink exact activeClassName="selected" to="/admin">Admin</NavLink>
                         </li>)}
                 </ul>
             </div>

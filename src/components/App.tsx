@@ -12,7 +12,7 @@ import { setContext } from "@apollo/client/link/context"
 import Header from "./Header"
 import AddFriend from "./AddFriend";
 import AllFriends from "./AllFriends"
-import FindFriend from "./FindFriend"
+import AdminPage from "./AdminPage"
 import Login from "./Login"
 import Home from "./Home"
 import settings from "../utils/settings.json"
@@ -70,8 +70,8 @@ export default function App() {
             <Route path="/addFriend">
               <AddFriend />
             </Route>
-            <Route path="/findFriend">
-              <FindFriend />
+            <Route path="/admin">
+              <AdminPage />
             </Route>
             <Route path="/login" >
               <Login setLoginStatus={setLoginStatus} />
