@@ -1,3 +1,4 @@
+import React from "react";
 import {
     NavLink,
     useHistory
@@ -34,9 +35,14 @@ export default function Header({ isLoggedIn, setLoginStatus }: addHeaderProps) {
                         <NavLink exact activeClassName="selected" to="/addFriend">Add Friend</NavLink>
                     </li>
                     {isLoggedIn && (
-                        <li>
-                            <NavLink exact activeClassName="selected" to="/allFriends">All Friends</NavLink>
-                        </li>)}
+                        <React.Fragment>
+                            <li>
+                                <NavLink exact activeClassName="selected" to="/allFriends">All Friends</NavLink>
+                            </li>
+                            <li>
+                                <NavLink exact activeClassName="selected" to="/gameArea">Game Area</NavLink>
+                            </li>
+                        </React.Fragment>)}
                     {role.includes("admin") && (
                         <li>
                             <NavLink exact activeClassName="selected" to="/admin">Admin</NavLink>

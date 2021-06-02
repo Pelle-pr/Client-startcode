@@ -3,41 +3,42 @@ import { useLazyQuery, gql, useMutation } from "@apollo/client"
 
 
 
-interface IInput {
-    email?: string
-    id?: string
-}
-interface IGetFriend {
-    getFriendByEmail?: IEditFriend
-    getFriendById?: IEditFriend
-}
 interface IEditFriend {
     firstName: string
     lastName: string
     email: string
-    password: string
-    role: string
+    password?: string
+    role?: string
+    __typename?: string
 
+}
+interface ErrorMsg {
+    msg: string
+    code: number
 }
 interface IKeyableFriend extends IEditFriend {
     [key: string]: any
 }
 
 const DELETE_FRIEND = gql`
-mutation getFriendByEmail($email: String!) {deleteFriend(email: $email)
-}`
-
-const GET_FRIEND_BY_ID = gql`
- query getFriendById($id: String!) 
- {getFriendById(id: $id)
- {firstName lastName email role password}
+mutation deleteFriend($email: String!) {deleteFriend(email: $email)
 }`
 
 const GET_FRIEND_BY_EMAIL = gql`
- query getFriendByEmail($email: String!) 
- {getFriendByEmail(email: $email)
- {firstName lastName email role password}
-}`
+  query getFriendByEmail($email: String!) 
+  { getFriendByEmail(email: $email) {
+    ...on Friend{
+      firstName
+      lastName
+      email
+      role
+      password
+    }
+    ...on Error{
+      msg
+      code
+    }
+  }}`
 
 const EDIT_FRIEND = gql`
 mutation adminEditFriend($input:FriendEditInput ) 
@@ -46,23 +47,12 @@ mutation adminEditFriend($input:FriendEditInput )
 }`
 
 export default function AdminPage() {
-    const [emailorId, setemailOrId] = useState("")
-    const [getFriendByEmail, { loading, called, data, error }] = useLazyQuery<IGetFriend, IInput>(
-        GET_FRIEND_BY_EMAIL,
-        { fetchPolicy: "no-cache" }
-    );
-    const [getFriendById, { loading: loadingId, called: calledId, data: dataId, error: errorId }] = useLazyQuery<IGetFriend, IInput>(
-        GET_FRIEND_BY_ID,
-        { fetchPolicy: "no-cache" }
-    );
-    const [editFriend] = useMutation<any>(
-        EDIT_FRIEND
-    );
-    const [deleteFriend] = useMutation<any>(
-        DELETE_FRIEND
-    );
-
-    const [friendToEdit, setFriendToEdit] = useState<any>({ firstName: "", lastName: "", email: "", role: "", password: "" })
+    const [email, setEmail] = useState("")
+    const [errorMsg, setErrorMsg] = useState<any>()
+    const [getFriendByEmail, { loading, data, error }] = useLazyQuery(GET_FRIEND_BY_EMAIL, { "fetchPolicy": "no-cache" });
+    const [editFriend, { error: editError }] = useMutation<IEditFriend>(EDIT_FRIEND, { onError: (err) => setErrorMsg(err) })
+    const [deleteFriend] = useMutation<any>(DELETE_FRIEND);
+    const [friendToEdit, setFriendToEdit] = useState<IEditFriend>({ firstName: "", lastName: "", email: "", role: "", password: "" })
 
     const handleChange = (event: any) => {
         const id = event.currentTarget.id;
@@ -84,72 +74,68 @@ export default function AdminPage() {
     const handleDelete = (event: any) => {
         event.preventDefault();
         deleteFriend({ variables: { email: friendToEdit.email } })
-        setFriendToEdit({ firstName: "", lastName: "", email: "", role: "" })
+        setFriendToEdit({ firstName: "", lastName: "", email: "", role: "", password: "" })
+    }
+
+    const handleFind = (event: any) => {
+        event.preventDefault()
+        getFriendByEmail({ variables: { email: email } })
     }
 
     useEffect(() => {
-        if (data?.getFriendByEmail) {
-            setFriendToEdit({ ...data?.getFriendByEmail })
-        } else {
-            setFriendToEdit({ ...dataId?.getFriendById })
-        };
-
-    }, [data, dataId]);
-
-    const fetchFriendByEmailOrId = (event: any) => {
-        event.preventDefault()
-        if (emailorId.includes("@")) {
-            getFriendByEmail({ variables: { email: emailorId } })
-
-        } else {
-            getFriendById({ variables: { id: emailorId } })
+        if (data?.getFriendByEmail.__typename === "Friend") {
+            setErrorMsg(undefined)
+            setFriendToEdit({ ...data.getFriendByEmail })
         }
-    }
+        if (data?.getFriendByEmail.__typename === "Error") {
+            setFriendToEdit({ firstName: "", lastName: "", email: "", role: "" })
+            setErrorMsg({ ...data.getFriendByEmail })
+        }
+    }, [data]);
 
 
     return (<div style={style}>
-        Email or ID: <input type="txt" value={emailorId} onChange={e => {
-            setemailOrId(e.target.value)
-        }}></input>
-    &nbsp;<button onClick={fetchFriendByEmailOrId}>Find Friend</button>
+        Email: <input type="txt" value={email} onChange={e => { setEmail(e.target.value) }}></input>
+
+        &nbsp;<button onClick={handleFind}>Find Friend</button>
+        {loading && <p>Loading....</p>}
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        {editError && <p style={{ color: "red" }}>{editError.message}</p>}
+        {errorMsg && <p style={{ color: "red" }}>{errorMsg.msg}</p>}
         <br />
         <br />
-        {(error || errorId) && <p>{error?.message}</p>}
-        {(called || loading) && (calledId || loadingId) && <p>Loading...</p>}
-        {(data || dataId) && (
-            <div>
-                <form onSubmit={handleSubmit} >
-                    <label>
-                        FirstName<br />
-                        <input type="text" id="firstName" value={friendToEdit.firstName} onChange={handleChange} />
-                    </label>
-                    <br />
-                    <label>
-                        LastName <br />
-                        <input type="text" id="lastName" value={friendToEdit.lastName} onChange={handleChange} />
-                    </label>
-                    <br />
-                    <label>
-                        Email <br />
-                        <input disabled={true} type="email" id="email" value={friendToEdit.email} />
-                    </label>
-                    <label>
-                        Password <br />
-                        <input type="password" id="password" value={friendToEdit.password} onChange={handleChange} />
-                    </label>
-                    <br />
-                    <input type="radio" value="user" id="role" checked={friendToEdit.role === "user"} /> User
+        {data && <div>
+            <form onSubmit={handleSubmit} >
+                <label>
+                    FirstName<br />
+                    <input type="text" id="firstName" value={friendToEdit.firstName} onChange={handleChange} />
+                </label>
+                <br />
+                <label>
+                    LastName <br />
+                    <input type="text" id="lastName" value={friendToEdit.lastName} onChange={handleChange} />
+                </label>
+                <br />
+                <label>
+                    Email <br />
+                    <input disabled={true} type="email" id="email" value={friendToEdit.email} />
+                </label>
+                <label>
+                    Password <br />
+                    <input type="password" id="password" value={friendToEdit.password} onChange={handleChange} />
+                </label>
+                <br />
+                <input type="radio" value="user" id="role" checked={friendToEdit.role === "user"} /> User
                     &nbsp;<input type="radio" value="admin" id="role" checked={friendToEdit.role === "admin"} /> Admin
                     <br /><br />
-                    <input type="submit" value="Edit friend" />
-                    <input type="button" value="Delete" onClick={handleDelete} />
-                </form>
-
-            </div>
-        )}
-
+                <input type="submit" value="Edit friend" />
+                <input type="button" value="Delete" onClick={handleDelete} />
+            </form>
+        </div>}
     </div>
+
     )
+
 }
 const style = {
     width: 400,

@@ -16,6 +16,7 @@ import AdminPage from "./AdminPage"
 import Login from "./Login"
 import Home from "./Home"
 import settings from "../utils/settings.json"
+import GameArea from "./GameArea"
 const graphqlURL = settings.graphqlEndpoint;
 
 const httpLink = createHttpLink({ uri: graphqlURL })
@@ -75,6 +76,9 @@ export default function App() {
             </Route>
             <Route path="/login" >
               <Login setLoginStatus={setLoginStatus} />
+            </Route>
+            <Route path="/gameArea">
+              <GameArea />
             </Route>
           </Switch>
         </div>
